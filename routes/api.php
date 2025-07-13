@@ -3,6 +3,14 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
-    return $request->user();
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\AuthenticatedSessionController;
+
+Route::post('/register', [UserController::class, 'store']);
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+// 認証必須のルートをグループ化
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', [UserController::class, 'me']);
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
 });
