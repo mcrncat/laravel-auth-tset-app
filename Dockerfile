@@ -1,5 +1,5 @@
 # 1. Node.js環境でReactビルドのみ実行
-FROM node:20 AS build
+FROM node:20 AS node-build
 
 WORKDIR /app
 
