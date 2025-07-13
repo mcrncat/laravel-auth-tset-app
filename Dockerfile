@@ -46,7 +46,7 @@ RUN php artisan migrate --force
 
 # npmビルド（Vite等）
 RUN npm run build
-RUN ls -a public/build
+RUN ls -a public/build/.vite/
 # Vite manifestのコピー（必要に応じて）
 RUN mkdir -p public/build && cp public/.vite/manifest.json public/build/
 
