@@ -10,7 +10,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY resources/js ./resources/js
-COPY vite.config.js ./
+COPY vite.config.ts ./
 RUN npm run build   # public/build にReactのビルド成果物が生成される想定
 
 # 2. PHP環境でComposerインストールとLaravelセットアップ
