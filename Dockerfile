@@ -33,7 +33,8 @@ RUN composer install --no-dev --optimize-autoloader
 RUN npm install
 
 # .envファイル準備
-RUN cp .env.example .env
+# RUN cp .env.example .env
+RUN php artisan config:clear && php artisan config:cache && php artisan migrate --force
 
 # SQLite用DBファイル作成
 RUN touch database/database.sqlite
