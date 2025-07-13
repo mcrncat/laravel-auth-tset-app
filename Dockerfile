@@ -1,79 +1,56 @@
-# 1. Node.js環境でReactビルドのみ実行
-FROM node:20 AS node-build
+# ベースイメージ
+FROM php:8.1-cli
 
-WORKDIR /app
+# システム依存パッケージをインストール
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    curl \
+    libzip-dev \
+    zip \
+    sqlite3 \
+    libsqlite3-dev \
+    nodejs \
+    npm \
+    && docker-php-ext-install pdo pdo_sqlite zip
 
-# 必要パッケージのインストール
-RUN apt-get update && \
-    apt-get install -y \
-    bash git openssh-client curl zip unzip \
-    libpng-dev libxml2-dev libonig-dev libzip-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-
-# パッケージインストール
-COPY package*.json ./
-RUN npm install
-
-# React ソースと Vite 設定のコピー
-COPY resources/js ./resources/js
-COPY vite.config.ts ./
-RUN npm run build
-
-# React ビルド後、manifest.json を public/build に移動
-RUN cp public/.vite/manifest.json public/build/
-
-
-# 2. PHP環境でComposerインストールとLaravelセットアップ
-FROM php:8.1-fpm AS php-build
-
+# 作業ディレクトリ
 WORKDIR /var/www/html
 
-RUN apt-get update && \
-    apt-get install -y bash git openssh curl zip unzip libpng-dev libxml2-dev libonig-dev libzip-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Composer
+# composerをインストール（もしローカルにcomposer.pharがなければ）
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Laravel依存ファイルのインストール
+# ソースコードをコピー（先にcomposer.jsonとpackage.jsonだけコピーするとキャッシュ効率UP）
 COPY composer.json composer.lock ./
+COPY package.json package-lock.json ./
+
+# PHP依存関係インストール
 RUN composer install --no-dev --optimize-autoloader
 
-# Reactビルド成果物をコピー
-COPY --from=node-build /app/public/build ./public/build
+# Node.js依存関係インストール
+RUN npm install
 
-# Laravelソースコピー
+# 全コードをコピー
 COPY . .
 
-# SQLite ファイル
+# 環境設定ファイルをコピー
+RUN cp .env.example .env
+
+# SQLite DBファイル作成
 RUN touch database/database.sqlite
 
-# Laravel初期化
+# Laravelキー生成とマイグレーション
 RUN php artisan key:generate
 RUN php artisan migrate --force
 
-# 権限
-RUN chown -R www-data:www-data storage bootstrap/cache
+# フロントビルド（Viteなど）
+RUN npm run build
 
-# 3. 実行用軽量PHPイメージ
-FROM php:8.1-fpm
+# manifest.jsonをpublic/buildにコピー（必要なら）
+RUN mkdir -p public/build && cp public/.vite/manifest.json public/build/
 
-WORKDIR /var/www/html
+# ポート開放
+EXPOSE 10000
 
-RUN apt-get update && \
-    apt-get install -y libpng-dev libzip-dev libonig-dev curl unzip && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# 最終アプリをコピー
-COPY --from=php-build /var/www/html /var/www/html
-
-# 権限
-RUN chown -R www-data:www-data storage bootstrap/cache
-
-EXPOSE 8000
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# サーバ起動コマンド（Renderのポート指定に合わせる）
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
