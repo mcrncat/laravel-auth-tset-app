@@ -50,6 +50,9 @@ RUN npm install
 # npmビルド（Viteビルド）
 RUN npm run build
 
+# manifest.json を public/build にコピー
+RUN cp public/build/.vite/manifest.json public/build/
+
 # ポート公開（artisan serve 用）
 EXPOSE 8000
 
