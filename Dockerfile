@@ -1,32 +1,53 @@
-# ---- PHPステージ ----
-FROM php:8.2-fpm AS php
+FROM php:8.2-fpm-alpine
 
-RUN apt-get update && apt-get install -y \
-    git unzip curl libzip-dev zip sqlite3 libsqlite3-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install pdo pdo_sqlite zip mbstring xml
+# 基本パッケージ
+RUN apk add --no-cache \
+    nginx \
+    git \
+    unzip \
+    curl \
+    libzip-dev \
+    zip \
+    sqlite \
+    sqlite-libs \
+    oniguruma-dev \
+    libxml2-dev \
+    nodejs \
+    npm \
+    supervisor \
+    bash
 
-# composer
+# PHP拡張
+RUN docker-php-ext-install pdo pdo_sqlite zip mbstring xml
+
+# Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
+# 作業ディレクトリ
 WORKDIR /var/www/html
+
+# プロジェクトコピー
 COPY . .
-RUN composer install --no-dev --optimize-autoloader
-RUN cp .env.product .env
-RUN php artisan key:generate
-RUN touch database/database.sqlite
-RUN php artisan migrate --force
-RUN php artisan config:cache
 
-# ---- nginxステージ ----
-FROM nginx:alpine
+# Laravel初期セットアップ
+RUN composer install --no-dev --optimize-autoloader && \
+    cp .env.product .env && \
+    php artisan key:generate && \
+    touch database/database.sqlite && \
+    php artisan migrate --force && \
+    php artisan config:cache
 
-COPY --from=php /var/www/html /var/www/html
-COPY ./docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+# Viteビルド
+RUN npm install && npm run build && \
+    cp public/build/.vite/manifest.json public/build/
 
-# php-fpmは別プロセスとして起動
-COPY --from=php /usr/local/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
-COPY --from=php /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
+# nginx設定ファイル
+COPY ./docker/nginx/default.conf /etc/nginx/http.d/default.conf
 
+# supervisor設定（php-fpm と nginx の両方を起動）
+COPY ./docker/supervisord.conf /etc/supervisord.conf
+
+# ポート公開
 EXPOSE 80
 
-CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
