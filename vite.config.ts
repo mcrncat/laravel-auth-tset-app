@@ -20,5 +20,5 @@ export default defineConfig({
   // index.htmlを生成しない設定（Inertiaの場合）
   root: '.', 
   publicDir: false, 
-  base: '/build/',
+  base: process.env.VITE_BASE_URL || '/build/',
 })

@@ -1,52 +1,60 @@
-# 1. ビルドステージ：Node.js環境でnpmビルド＆Composer依存解決
-FROM node:16-alpine AS build
+FROM php:8.2-fpm
 
-WORKDIR /app
+# 必要パッケージのインストール
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    curl \
+    libzip-dev \
+    zip \
+    sqlite3 \
+    libsqlite3-dev \
+    libonig-dev \
+    libxml2-dev \
+    nodejs \
+    npm
 
-# bash, gitなどをインストール（必要に応じて）
-RUN apk add --no-cache bash git openssh curl zip unzip libpng-dev libxml2-dev oniguruma-dev libzip-dev
+# PHP拡張インストール
+RUN docker-php-ext-install pdo pdo_sqlite zip mbstring xml ctype
 
-# PHP関連パッケージと拡張のインストール用ツール（後で使う）
-RUN apk add --no-cache $PHPIZE_DEPS
-
-# Composerインストール
+# composer インストール
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# ソースコードと依存ファイルをコピー
-COPY . .
-
-# Composer依存解決（開発依存なし）
-RUN composer install --no-dev --optimize-autoloader
-
-# npmパッケージインストール＆本番ビルド
-RUN npm install
-RUN npm run build   # ここでpublicディレクトリにReactの静的ファイルが生成される想定
-
-RUN cp public/build/.vite/manifest.json public/build
-
-# SQLite用にファイル作成（必要に応じて）
-RUN touch database/database.sqlite
-
-# Laravelアプリキー生成
-RUN php artisan key:generate
-
-# 2. ランタイムステージ：軽量PHPランタイムにビルド成果物をコピー
-FROM php:8.1-fpm-alpine
-
+# 作業ディレクトリ設定
 WORKDIR /var/www/html
 
-# PHP実行に必要なパッケージと拡張をインストール
-RUN apk add --no-cache libpng libzip oniguruma curl unzip \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+# プロジェクト全体をコピー
+COPY . .
 
-# ビルドステージからアプリコードを丸ごとコピー（publicにReactのビルド成果物含む）
-COPY --from=build /app /var/www/html
+# composer依存関係インストール（vendorディレクトリ作成）
+RUN composer install --no-dev --optimize-autoloader
 
-# ストレージとキャッシュの権限設定
-RUN chown -R www-data:www-data storage bootstrap/cache
+# .envファイル準備（適宜ファイル名を変えてください）
+RUN cp .env.product .env
 
-# ポート開放
-EXPOSE 8000
+# アプリケーションキー生成（vendorが存在するので実行可能）
+RUN php artisan key:generate
 
-# 起動コマンド
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# SQLite用DBファイル作成（もしなければ）
+RUN touch database/database.sqlite
+
+# 設定キャッシュクリア＆生成（本番向け）
+RUN php artisan config:clear && php artisan config:cache
+
+# マイグレーション実行（本番環境は --force 推奨）
+RUN php artisan migrate --force
+
+# npm依存関係インストール
+RUN npm install
+
+# npmビルド（Viteビルド）
+RUN npm run build
+
+# manifest.json を public/build にコピー
+RUN cp public/build/.vite/manifest.json public/build/
+
+# ポート公開（artisan serve 用）
+EXPOSE 80
+
+# サーバ起動コマンド
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
