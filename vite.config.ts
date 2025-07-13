@@ -1,25 +1,24 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import laravel from 'laravel-vite-plugin';
-import { resolve } from 'node:path';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
-    plugins: [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
-            ssr: 'resources/js/ssr.tsx',
-            refresh: true,
-        }),
-        react(),
-        tailwindcss(),
-    ],
-    esbuild: {
-        jsx: 'automatic',
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'resources/js'), // LaravelのReactコードがある場所に合わせる
+    }
+  },
+  build: {
+    outDir: 'public/build',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: 'resources/js/app.jsx', // メインのエントリーポイントだけ指定
     },
-    resolve: {
-        alias: {
-            'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
-        },
-    },
-});
+    manifest: true
+  },
+  // index.htmlを生成しない設定（Inertiaの場合）
+  root: '.', 
+  publicDir: false, 
+  base: '/build/',
+})
