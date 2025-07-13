@@ -1,60 +1,32 @@
-FROM php:8.2-fpm
+# ---- PHPステージ ----
+FROM php:8.2-fpm AS php
 
-# 必要パッケージのインストール
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    curl \
-    libzip-dev \
-    zip \
-    sqlite3 \
-    libsqlite3-dev \
-    libonig-dev \
-    libxml2-dev \
-    nodejs \
-    npm
+    git unzip curl libzip-dev zip sqlite3 libsqlite3-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo pdo_sqlite zip mbstring xml
 
-# PHP拡張インストール
-RUN docker-php-ext-install pdo pdo_sqlite zip mbstring xml ctype
-
-# composer インストール
+# composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# 作業ディレクトリ設定
 WORKDIR /var/www/html
-
-# プロジェクト全体をコピー
 COPY . .
-
-# composer依存関係インストール（vendorディレクトリ作成）
 RUN composer install --no-dev --optimize-autoloader
-
-# .envファイル準備（適宜ファイル名を変えてください）
 RUN cp .env.product .env
-
-# アプリケーションキー生成（vendorが存在するので実行可能）
 RUN php artisan key:generate
-
-# SQLite用DBファイル作成（もしなければ）
 RUN touch database/database.sqlite
-
-# 設定キャッシュクリア＆生成（本番向け）
-RUN php artisan config:clear && php artisan config:cache
-
-# マイグレーション実行（本番環境は --force 推奨）
 RUN php artisan migrate --force
+RUN php artisan config:cache
 
-# npm依存関係インストール
-RUN npm install
+# ---- nginxステージ ----
+FROM nginx:alpine
 
-# npmビルド（Viteビルド）
-RUN npm run build
+COPY --from=php /var/www/html /var/www/html
+COPY ./docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 
-# manifest.json を public/build にコピー
-RUN cp public/build/.vite/manifest.json public/build/
+# php-fpmは別プロセスとして起動
+COPY --from=php /usr/local/etc/php-fpm.d/ /usr/local/etc/php-fpm.d/
+COPY --from=php /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
 
-# ポート公開（artisan serve 用）
 EXPOSE 80
 
-# サーバ起動コマンド
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
+CMD ["sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
