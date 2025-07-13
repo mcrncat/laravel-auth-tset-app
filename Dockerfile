@@ -9,13 +9,14 @@ RUN apk add --no-cache \
     libzip-dev \
     zip \
     sqlite \
-    sqlite-libs \
+    sqlite-dev \ 
     oniguruma-dev \
     libxml2-dev \
     nodejs \
     npm \
     supervisor \
     bash
+
 
 # PHP拡張
 RUN docker-php-ext-install pdo pdo_sqlite zip mbstring xml
