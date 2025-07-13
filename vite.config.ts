@@ -22,6 +22,6 @@ export default defineConfig(({ mode }) => {
     },
     root: '.',
     publicDir: false,
-    base: `${env.VITE_APP_URL}/build/`, // ← HTTPS URLを明示
+    base: process.env.VITE_BASE_URL || '/build/',
   }
 })
