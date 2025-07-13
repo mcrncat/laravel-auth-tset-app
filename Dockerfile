@@ -3,11 +3,14 @@ FROM node:20 AS node-build
 
 WORKDIR /app
 
-# 必要パッケージのインストール（Debian）
+# 必要パッケージのインストール
 RUN apt-get update && \
-    apt-get install -y bash git openssh curl zip unzip libpng-dev libxml2-dev libonig-dev libzip-dev && \
+    apt-get install -y \
+    bash git openssh-client curl zip unzip \
+    libpng-dev libxml2-dev libonig-dev libzip-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
 
 # パッケージインストール
 COPY package*.json ./
@@ -17,6 +20,10 @@ RUN npm install
 COPY resources/js ./resources/js
 COPY vite.config.ts ./
 RUN npm run build
+
+# React ビルド後、manifest.json を public/build に移動
+RUN cp public/.vite/manifest.json public/build/
+
 
 # 2. PHP環境でComposerインストールとLaravelセットアップ
 FROM php:8.1-fpm AS php-build
