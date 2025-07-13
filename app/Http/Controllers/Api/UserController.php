@@ -16,31 +16,29 @@ class UserController extends Controller
      * ユーザー登録（登録後、自動ログイン + トークン発行）
      */
     public function store(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => ['required', 'confirmed', Rules\Password::defaults()],
+    ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
-        event(new Registered($user));
+    $token = $user->createToken('auth_token')->plainTextToken;
 
-        // トークンベース認証（Sanctum）
-        $token = $user->createToken('auth_token')->plainTextToken;
+    return response()->json([
+        'message' => 'User registered successfully',
+        'access_token' => $token,
+        'token_type' => 'Bearer',
+        'user' => $user,
+    ], 201);
+}
 
-        return response()->json([
-            'message' => 'User registered successfully',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user,
-        ], 201);
-    }
 
     /**
      * 認証済みユーザー情報の取得（Sanctum トークンが必要）

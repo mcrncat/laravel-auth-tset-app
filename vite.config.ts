@@ -1,24 +1,27 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'resources/js'), // LaravelのReactコードがある場所に合わせる
-    }
-  },
-  build: {
-    outDir: 'public/build',
-    emptyOutDir: true,
-    rollupOptions: {
-      input: 'resources/js/app.jsx', // メインのエントリーポイントだけ指定
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'resources/js'),
+      }
     },
-    manifest: true
-  },
-  // index.htmlを生成しない設定（Inertiaの場合）
-  root: '.', 
-  publicDir: false, 
-  base: process.env.VITE_BASE_URL || '/build/',
+    build: {
+      outDir: 'public/build',
+      emptyOutDir: true,
+      rollupOptions: {
+        input: 'resources/js/app.jsx',
+      },
+      manifest: true
+    },
+    root: '.',
+    publicDir: false,
+    base: process.env.VITE_BASE_URL || '/build/',
+  }
 })
