@@ -38,9 +38,10 @@ RUN composer install --no-dev --optimize-autoloader && \
     php artisan migrate --force && \
     php artisan config:cache
 
-# Laravelのキャッシュディレクトリに書き込み権限を付与
-RUN chmod -R 775 storage bootstrap/cache \
- && chown -R www-data:www-data storage bootstrap/cache
+# SQLite DBファイルとstorage全体のパーミッション修正
+RUN chmod -R 775 storage bootstrap/cache database/database.sqlite \
+ && chown -R www-data:www-data storage bootstrap/cache database
+
 
 
 # Viteビルド
