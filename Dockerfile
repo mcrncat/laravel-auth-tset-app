@@ -8,9 +8,11 @@ RUN apt-get update && apt-get install -y \
     zip \
     sqlite3 \
     libsqlite3-dev \
+    libonig-dev \      
     nodejs \
     npm \
     && docker-php-ext-install pdo pdo_sqlite zip mbstring tokenizer xml ctype
+
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
