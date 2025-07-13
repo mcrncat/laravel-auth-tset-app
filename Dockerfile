@@ -32,7 +32,7 @@ COPY . .
 
 # Laravel初期セットアップ
 RUN composer install --no-dev --optimize-autoloader && \
-    cp .env.product .env && \
+    cp .env.production .env && \
     php artisan key:generate && \
     touch database/database.sqlite && \
     php artisan migrate --force && \
