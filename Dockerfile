@@ -15,7 +15,7 @@ RUN npm install
 
 # React ソースと Vite 設定のコピー
 COPY resources/js ./resources/js
-COPY vite.config.js ./  # ← `.ts` の場合は事前に対処する
+COPY vite.config.ts ./
 RUN npm run build
 
 # 2. PHP環境でComposerインストールとLaravelセットアップ
