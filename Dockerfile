@@ -18,9 +18,11 @@ FROM php:8.1-fpm-alpine AS php-build
 
 WORKDIR /var/www/html
 
-RUN apk add --no-cache \
-    bash git curl zip unzip libzip-dev libpng-dev libxml2-dev oniguruma-dev $PHPIZE_DEPS \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip zip
+RUN apt-get update && \
+    apt-get install -y \
+    bash git openssh-client curl zip unzip libpng-dev libxml2-dev libonig-dev libzip-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Composerインストール
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -47,7 +49,12 @@ FROM php:8.1-fpm-alpine
 
 WORKDIR /var/www/html
 
-RUN apk add --no-cache libpng libzip oniguruma curl unzip
+RUN apt-get update && \
+    apt-get install -y \
+    libpng-dev libzip-dev libonig-dev curl unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 COPY --from=php-build /var/www/html /var/www/html
 
