@@ -1,8 +1,7 @@
 FROM php:8.2-fpm
 
-# Node.js v20 を公式からインストール（Vite 7対応）
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get update && apt-get install -y \
+# 必要パッケージのインストール（build系 & SQLiteなど）
+RUN apt-get update && apt-get install -y \
     git \
     unzip \
     curl \
@@ -12,8 +11,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     libsqlite3-dev \
     libonig-dev \
     libxml2-dev \
-    nodejs \
-    npm
+    python3 \
+    make \
+    g++ \
+    && apt-get clean
+
+# Node.js 20 を n（Node バージョンマネージャ）でインストール
+RUN curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n | bash -s lts \
+    && npm install -g npm
 
 # PHP拡張インストール
 RUN docker-php-ext-install pdo pdo_sqlite zip mbstring xml ctype
