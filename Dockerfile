@@ -54,7 +54,7 @@ RUN npm run build
 RUN cp public/build/.vite/manifest.json public/build/
 
 # ポート公開（artisan serve 用）
-EXPOSE 8000
+EXPOSE 80
 
 # サーバ起動コマンド
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
