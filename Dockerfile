@@ -1,52 +1,58 @@
-# 1. ビルドステージ：Node.js環境でnpmビルド＆Composer依存解決
-FROM node:16-alpine AS build
+# 1. Node.js環境でReactビルドのみ実行
+FROM node:16-alpine AS node-build
 
 WORKDIR /app
 
-# bash, gitなどをインストール（必要に応じて）
+# bashなど必要ツールをインストール（必要なら）
 RUN apk add --no-cache bash git openssh curl zip unzip libpng-dev libxml2-dev oniguruma-dev libzip-dev
 
-# PHP関連パッケージと拡張のインストール用ツール（後で使う）
-RUN apk add --no-cache $PHPIZE_DEPS
+COPY package*.json ./
+RUN npm install
+
+COPY resources/js ./resources/js
+COPY vite.config.js ./
+RUN npm run build   # public/build にReactのビルド成果物が生成される想定
+
+# 2. PHP環境でComposerインストールとLaravelセットアップ
+FROM php:8.1-fpm-alpine AS php-build
+
+WORKDIR /var/www/html
+
+RUN apk add --no-cache \
+    bash git curl zip unzip libzip-dev libpng-dev libxml2-dev oniguruma-dev $PHPIZE_DEPS \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip zip
 
 # Composerインストール
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# ソースコードと依存ファイルをコピー
-COPY . .
-
-# Composer依存解決（開発依存なし）
+COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader
 
-# npmパッケージインストール＆本番ビルド
-RUN npm install
-RUN npm run build   # ここでpublicディレクトリにReactの静的ファイルが生成される想定
+# Reactのビルド成果物をNodeビルドステージからコピー
+COPY --from=node-build /app/public ./public
 
-RUN cp public/build/.vite/manifest.json public/build
+# Laravelソースコードコピー
+COPY . .
 
-# SQLite用にファイル作成（必要に応じて）
+# SQLiteファイル作成
 RUN touch database/database.sqlite
 
-# Laravelアプリキー生成
 RUN php artisan key:generate
+RUN php artisan migrate --force
 
-# 2. ランタイムステージ：軽量PHPランタイムにビルド成果物をコピー
+RUN chown -R www-data:www-data storage bootstrap/cache
+
+# 3. 実行用軽量PHPイメージ
 FROM php:8.1-fpm-alpine
 
 WORKDIR /var/www/html
 
-# PHP実行に必要なパッケージと拡張をインストール
-RUN apk add --no-cache libpng libzip oniguruma curl unzip \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+RUN apk add --no-cache libpng libzip oniguruma curl unzip
 
-# ビルドステージからアプリコードを丸ごとコピー（publicにReactのビルド成果物含む）
-COPY --from=build /app /var/www/html
+COPY --from=php-build /var/www/html /var/www/html
 
-# ストレージとキャッシュの権限設定
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# ポート開放
 EXPOSE 8000
 
-# 起動コマンド
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
