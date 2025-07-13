@@ -48,7 +48,7 @@ RUN php artisan migrate --force
 RUN npm run build
 RUN ls -a public/build/.vite/
 # Vite manifestのコピー（必要に応じて）
-RUN mkdir -p public/build && cp public/.vite/manifest.json public/build/
+RUN cp public/.vite/manifest.json public/build/
 
 # ポート公開
 EXPOSE 8000
