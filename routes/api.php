@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthenticatedSessionController;
 
+Route::options('{any}', fn () => response()->noContent())
+    ->where('any', '.*');
+
 Route::post('/register', [UserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
